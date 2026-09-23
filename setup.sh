@@ -55,6 +55,7 @@ pip install "transformers>=4.44" datasets accelerate huggingface_hub
 git clone --depth 1 https://github.com/jingyaogong/minimind.git
 cd ~/minimind
 
+echo "=== 安裝minimind套件 ==="
 VERSION_PIN=$(grep -inE '^\s*(torch|torchvision|nvidia|triton)' requirements.txt)
 if [-z VERSION_PIN]; then
     pip install -r requirement.txt
