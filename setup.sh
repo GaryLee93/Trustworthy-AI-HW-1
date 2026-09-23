@@ -6,6 +6,10 @@ cd ~
 sudo apt update
 sudo apt install -y build-essential git git-lfs
 
+cd ~/Trustworthy-AI-HW-1
+python3 -m venv ~/venv --system-site-packages=false
+source ~/venv/bin/activate
+
 echo "=== 偵測 GPU 與驅動資訊 ==="
 if ! command -v nvidia-smi &> /dev/null; then
     echo "找不到 nvidia-smi,此機器可能沒有 NVIDIA GPU 或驅動未安裝,改裝 CPU 版本"
@@ -56,6 +60,7 @@ git clone --depth 1 https://github.com/jingyaogong/minimind.git
 cd ~/minimind
 
 echo "=== 安裝minimind套件 ==="
+
 VERSION_PIN=$(grep -inE '^\s*(torch|torchvision|nvidia|triton)' requirements.txt || true)
 if [ -z "$VERSION_PIN" ]; then
     pip install -r requirements.txt
