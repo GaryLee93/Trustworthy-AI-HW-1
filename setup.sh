@@ -56,6 +56,7 @@ if torch.cuda.is_available():
 
 pip install "transformers>=4.44" datasets accelerate huggingface_hub
 
+cd ~
 git clone --depth 1 https://github.com/jingyaogong/minimind.git
 cd ~/minimind
 
