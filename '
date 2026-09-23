@@ -56,15 +56,15 @@ git clone --depth 1 https://github.com/jingyaogong/minimind.git
 cd ~/minimind
 
 echo "=== 安裝minimind套件 ==="
-VERSION_PIN=$(grep -inE '^\s*(torch|torchvision|nvidia|triton)' requirements.txt || true)
+VERSION_PIN=$(grep -inE '^\s*(torch|torchvision|nvidia|triton)' requirements.txt)
 if [ -z "$VERSION_PIN" ]; then
     pip install -r requirements.txt
 else
     grep -ivE '^\s*(torch|torchvision|torchaudio|nvidia|triton)' requirements.txt > /tmp/req.txt
     pip install -r /tmp/req.txt
 fi
-python3 -c 'import torch; print("請確認是否與git clone前安裝的版本相同" ,torch.__version__, torch.cuda.is_available())'
+python -c 'import torch; print("請確認是否與git clone前安裝的版本相同" ,torch.__version__, torch.cuda.is_available())'
 
 cd ~/Trustworthy-AI-HW-1
 hf download jingyaogong/minimind-3 --local-dir ~/Trustworthy-AI-HW-1/minimind-3
-python3 eval_tmmluplus.py eval --model_path ./minimind-3 --limit 20 --output smoke.json
+python eval_tmmluplus.py eval --model_path ./minimind-3 --limit 20 --output smoke.json
