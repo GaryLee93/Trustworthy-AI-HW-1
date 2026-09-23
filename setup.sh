@@ -7,8 +7,8 @@ sudo apt update
 sudo apt install -y build-essential git git-lfs
 
 cd ~/Trustworthy-AI-HW-1
-python3 -m venv ~/venv --system-site-packages=false
-source ~/venv/bin/activate
+python3 -m venv .venv 
+source .venv/bin/activate
 
 echo "=== 偵測 GPU 與驅動資訊 ==="
 if ! command -v nvidia-smi &> /dev/null; then
