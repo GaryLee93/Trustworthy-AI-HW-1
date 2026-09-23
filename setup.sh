@@ -57,7 +57,7 @@ cd ~/minimind
 
 echo "=== 安裝minimind套件 ==="
 VERSION_PIN=$(grep -inE '^\s*(torch|torchvision|nvidia|triton)' requirements.txt)
-if [-z VERSION_PIN]; then
+if [-z "$VERSION_PIN" ]; then
     pip install -r requirement.txt
 else
     grep -ivE '^\s*(torch|torchvision|torchaudio|nvidia|triton)' requirements.txt > /tmp/req.txt
