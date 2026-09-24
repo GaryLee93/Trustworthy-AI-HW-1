@@ -1,8 +1,20 @@
 #!/bin/bash
+# ========== 用法 ==========
+# ./setup.sh <PROJECT_DIR>
+# 例如: ./setup.sh ~/Trustworthy-AI-HW-1
+# ==========================
+
 set -e
 
+if [ -z "$1" ]; then
+    echo "用法: $0 <PROJECT_DIR>" >&2
+    exit 1
+fi
+
+PROJECT_DIR="$1"
+
 echo "=== 安裝基礎工具 ==="
-cd ~
+cd "${PROJECT_DIR}"
 sudo apt update
 sudo apt install -y build-essential git git-lfs nvtop
 
@@ -10,7 +22,6 @@ echo "=== 確定submodule裡的minimind有沒有裝好 ==="
 git submodule update --init --recursive
 
 echo "=== 建立虛擬環境 ==="
-cd ~/Trustworthy-AI-HW-1
 python3 -m venv .venv
 source .venv/bin/activate
 
@@ -61,7 +72,7 @@ if torch.cuda.is_available():
 pip install "transformers>=4.44" datasets accelerate huggingface_hub
 
 echo "=== 安裝minimind套件 ==="
-cd ~/Trustworthy-AI-HW-1/minimind
+cd "${PROJECT_DIR}/minimind"
 VERSION_PIN=$(grep -inE '^\s*(torch|torchvision|nvidia|triton)' requirements.txt || true)
 if [ -z "$VERSION_PIN" ]; then
     pip install -r requirements.txt
@@ -72,12 +83,12 @@ fi
 python3 -c 'import torch; print("請確認是否與git clone前安裝的版本相同" ,torch.__version__, torch.cuda.is_available())'
 
 echo "=== 冒煙測試，看一下能不能動 ==="
-cd ~/Trustworthy-AI-HW-1
-hf download jingyaogong/minimind-3 --local-dir ~/Trustworthy-AI-HW-1/minimind-3
+cd "${PROJECT_DIR}"
+hf download jingyaogong/minimind-3 --local-dir "${PROJECT_DIR}/minimind-3"
 python3 eval_tmmluplus.py eval --model_path ./minimind-3 --limit 20 --output smoke.json
 
-mkdir -p ~/Trustworthy-AI-HW-1/minimind/dataset
-cd ~/Trustworthy-AI-HW-1/minimind/dataset
+mkdir -p "${PROJECT_DIR}/minimind/dataset"
+cd "${PROJECT_DIR}/minimind/dataset"
 hf download jingyaogong/minimind_dataset --repo-type dataset \
     --include "pretrain_t2t_mini.jsonl" "sft_t2t_mini.jsonl" --local-dir .
 ls -lh
