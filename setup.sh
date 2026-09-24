@@ -4,7 +4,7 @@ set -e
 echo "=== 安裝基礎工具 ==="
 cd ~
 sudo apt update
-sudo apt install -y build-essential git git-lfs
+sudo apt install -y build-essential git git-lfs nvtop
 
 cd ~/Trustworthy-AI-HW-1
 python3 -m venv .venv

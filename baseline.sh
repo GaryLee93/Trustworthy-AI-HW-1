@@ -6,7 +6,7 @@ mkdir -p /vault/baseline
 [ ! -e ~/minimind/checkpoints ] && ln -s /vault/baseline/checkpoints ~/minimind/checkpoints
 mkdir -p /vault/baseline/checkpoints
 
-swanlab login iXDM58vG5zuP1CHeKtVPh
+swanlab login -k iXDM58vG5zuP1CHeKtVPh
 
 python3 train_pretrain.py \
     --save_dir /vault/baseline \
