@@ -22,8 +22,10 @@ echo "=== 確定submodule裡的minimind有沒有裝好 ==="
 git submodule update --init --recursive
 
 echo "=== 建立虛擬環境 ==="
-python3 -m venv .venv
-source .venv/bin/activate
+# python3 -m venv .venv
+# source .venv/bin/activate
+source /tmp/b11902090/miniconda3/etc/profile.d/conda.sh
+conda activate minigpt
 
 echo "=== 偵測 GPU 與驅動資訊 ==="
 if ! command -v nvidia-smi &> /dev/null; then

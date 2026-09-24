@@ -13,7 +13,8 @@ PROJECT_DIR="$1"
 OUTPUT_DIR="$2"
 
 cd "${PROJECT_DIR}"
-source .venv/bin/activate
+source /tmp/b11902090/miniconda3/etc/profile.d/conda.sh
+conda activate minigpt
 cd "${PROJECT_DIR}/minimind/trainer"
 mkdir -p "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}/checkpoints"
