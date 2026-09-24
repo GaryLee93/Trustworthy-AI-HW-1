@@ -12,7 +12,7 @@ swanlab login -k iXDM58vG5zuP1CHeKtVPh
 
 python3 train_pretrain.py \
     --save_dir /vault/baseline \
-    --log_interval 2000 \
+    --log_interval 1000 \
     --save_interval 2000 \
     --seed 824 \
     --use_wandb \
@@ -20,7 +20,7 @@ python3 train_pretrain.py \
 
 python3 train_full_sft.py \
     --save_dir /vault/baseline \
-    --log_interval 2000 \
+    --log_interval 1000 \
     --save_interval 2000 \
     --seed 824 \
     --use_wandb \
