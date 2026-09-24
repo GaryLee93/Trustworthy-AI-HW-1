@@ -2,11 +2,11 @@ set -e
 
 cd ~/Trustworthy-AI-HW-1
 source .venv/bin/activate
-cd ~/minimind/trainer
+cd ~/Trustworthy-AI-HW-1/minimind/trainer
 mkdir -p /vault/baseline
-ln -sfn /vault/baseline ~/minimind/out
-ln -sfn /vault/baseline/checkpoints ~/minimind/checkpoints
 mkdir -p /vault/baseline/checkpoints
+ln -sfn /vault/baseline ~/Trustworthy-AI-HW-1/minimind/out
+ln -sfn /vault/baseline/checkpoints ~/Trustworthy-AI-HW-1/minimind/checkpoints
 
 swanlab login -k iXDM58vG5zuP1CHeKtVPh
 
