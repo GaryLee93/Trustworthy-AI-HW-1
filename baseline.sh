@@ -1,5 +1,7 @@
 set -e
 
+cd ~/Trustworthy-AI-HW-1
+source .venv/bin/activate
 cd ~/minimind/trainer
 mkdir -p /vault/baseline
 ln -sfn /vault/baseline ~/minimind/out
