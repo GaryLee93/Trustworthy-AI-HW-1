@@ -7,7 +7,7 @@ sudo apt update
 sudo apt install -y build-essential git git-lfs
 
 cd ~/Trustworthy-AI-HW-1
-python3 -m venv .venv 
+python3 -m venv .venv
 source .venv/bin/activate
 
 echo "=== 偵測 GPU 與驅動資訊 ==="
@@ -74,3 +74,9 @@ python3 -c 'import torch; print("請確認是否與git clone前安裝的版本�
 cd ~/Trustworthy-AI-HW-1
 hf download jingyaogong/minimind-3 --local-dir ~/Trustworthy-AI-HW-1/minimind-3
 python3 eval_tmmluplus.py eval --model_path ./minimind-3 --limit 20 --output smoke.json
+
+mkdir -p ~/minimind/dataset
+cd ~/minimind/dataset
+hf download jingyaogong/minimind_dataset --repo-type dataset \
+    --include "pretrain_t2t_mini.jsonl" "sft_t2t_mini.jsonl" --local-dir .
+ls -lh
