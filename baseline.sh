@@ -12,14 +12,16 @@ swanlab login -k iXDM58vG5zuP1CHeKtVPh
 
 python3 train_pretrain.py \
     --save_dir /vault/baseline \
-    --log_interval 10 \
+    --log_interval 2000 \
+    --save_interval 2000 \
     --seed 824 \
     --use_wandb \
     --wandb_project "Trustworthy-AI-HW-1"
 
-python3 train_full_SFT.py \
+python3 train_full_sft.py \
     --save_dir /vault/baseline \
-    --log_interval 10 \
+    --log_interval 2000 \
+    --save_interval 2000 \
     --seed 824 \
     --use_wandb \
     --wandb_project "Trustworthy-AI-HW-1"
