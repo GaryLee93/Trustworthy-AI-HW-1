@@ -2,8 +2,8 @@ set -e
 
 cd ~/minimind/trainer
 mkdir -p /vault/baseline
-[ ! -e ~/minimind/out ] && ln -s /vault/baseline ~/minimind/out
-[ ! -e ~/minimind/checkpoints ] && ln -s /vault/baseline/checkpoints ~/minimind/checkpoints
+ln -sfn /vault/baseline ~/minimind/out
+ln -sfn /vault/baseline/checkpoints ~/minimind/checkpoints
 mkdir -p /vault/baseline/checkpoints
 
 swanlab login -k iXDM58vG5zuP1CHeKtVPh
