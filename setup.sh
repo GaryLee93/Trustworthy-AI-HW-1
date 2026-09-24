@@ -15,8 +15,8 @@ PROJECT_DIR="$1"
 
 echo "=== 安裝基礎工具 ==="
 cd "${PROJECT_DIR}"
-sudo apt update
-sudo apt install -y build-essential git git-lfs nvtop
+# sudo apt update
+# sudo apt install -y build-essential git nvtop
 
 echo "=== 確定submodule裡的minimind有沒有裝好 ==="
 git submodule update --init --recursive
