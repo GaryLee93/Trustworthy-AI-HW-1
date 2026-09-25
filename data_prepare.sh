@@ -9,7 +9,7 @@ python prepare_wiki_pretrain.py \
 
 python prepare_tmmluplus_sft.py \
     --seed 824 \
-    --holdout_frec 0.2 \
+    --holdout_frac 0.2 \
     --revision 1.1 \
     --holdout_out_path /tmp/Trustworthy-AI-HW-1/minimind/dataset/tmmluplus_holdout_check.jsonl \
     --out_path /tmp/b11902090/Trustworthy-AI-HW-1/minimind/dataset/tmmluplus_sft.jsonl
