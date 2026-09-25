@@ -8,6 +8,8 @@ OUTPUT_DIR="$1"
 
 cd /tmp/b11902090/Trustworthy-AI-HW-1/minimind/scripts
 python3 convert_model.py
+
+cd /tmp/b11902090/Trustworthy-AI-HW-1
 python3 eval_tmmluplus.py eval \
     --model_path ../../minimind-3 \
     --output "${OUTPUT_DIR}"/eval.json
