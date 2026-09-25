@@ -31,12 +31,21 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import sys
 
 from datasets import load_dataset
 
 DATASET_NAME = "zetavg/zh-tw-wikipedia"
+
+# Columns present in this dataset besides "markdown" (see the dataset card:
+# pageid, html, markdown, coordinate, length, touched, lastrevid,
+# original_title). "html" alone can be up to 432KB per row. We drop these
+# BEFORE shuffling: datasets' streaming shuffle buffer holds full rows, so
+# without this, a buffer_size=10000 shuffle can balloon to multiple GB and
+# crash with a native OOM abort (no Python traceback, just "core dumped").
+_COLUMNS_TO_DROP = ["pageid", "html", "coordinate", "length", "touched", "lastrevid", "original_title"]
 
 _HEADER_RE = re.compile(r"^#{1,6}\s*", flags=re.MULTILINE)
 _BOLD_RE = re.compile(r"\*\*(.*?)\*\*")
@@ -59,15 +68,20 @@ def main():
     parser = argparse.ArgumentParser(description="Stream zh-tw Wikipedia into a size-capped MiniMind pretrain jsonl")
     parser.add_argument("--target_mb", type=float, default=1024, help="stop once approximately this many MB of text have been written")
     parser.add_argument("--seed", type=int, default=42, help="seed for the streaming shuffle buffer")
-    parser.add_argument("--buffer_size", type=int, default=10000, help="shuffle buffer size for streaming (datasets library shuffles a rolling window, not a true global shuffle)")
+    parser.add_argument("--buffer_size", type=int, default=2000, help="shuffle buffer size for streaming, in ROWS (datasets library shuffles a rolling window, not a true global shuffle). Kept modest since even markdown-only rows can be up to ~170KB each.")
     parser.add_argument("--min_length", type=int, default=100, help="skip cleaned articles shorter than this many characters (drops stubs)")
     parser.add_argument("--out_path", type=str, default="../dataset/zhtw_wikipedia_pretrain.jsonl", help="output jsonl path")
     args = parser.parse_args()
 
     target_bytes = args.target_mb * 1024 * 1024
 
+    out_dir = os.path.dirname(args.out_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
     print(f"Streaming {DATASET_NAME} (train split), shuffle buffer={args.buffer_size}, seed={args.seed} ...", file=sys.stderr)
     ds = load_dataset(DATASET_NAME, split="train", streaming=True)
+    ds = ds.remove_columns([c for c in _COLUMNS_TO_DROP if c in ds.column_names])
     ds = ds.shuffle(seed=args.seed, buffer_size=args.buffer_size)
 
     written_bytes = 0
