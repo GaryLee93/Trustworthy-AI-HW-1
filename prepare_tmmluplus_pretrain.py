@@ -141,6 +141,19 @@ def stratified_holdout_split(per_subject, holdout_frac, seed):
     return train_pool, val_train_pool, val_holdout_pool
 
 
+def clean_value(v):
+    """Stringify a pandas cell value cleanly.
+
+    A numeric column that also contains a missing value anywhere gets
+    read back as float64 (pandas has no integer NaN), so a clean integer
+    like 50 shows up as 50.0. Collapse that back to "50" for readability;
+    everything else just gets str()'d and whitespace-trimmed.
+    """
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v).strip()
+
+
 def extract_fields(ex):
     """Pull question/options/answer out of one TMMLU+ example.
 
@@ -148,10 +161,21 @@ def extract_fields(ex):
     (confirmed against data/accounting_train.csv's header on the Hub).
     Adjust here if a printed row shows different column names for your
     revision.
+
+    IMPORTANT: pandas.read_csv() infers a dtype per column. Subjects whose
+    options happen to be purely numeric (e.g. "50", "100", "200", "300")
+    get that option column read back as int64/float64, not str -- so
+    ex["A"] can be a numpy int or float, not a string. clean_value()
+    normalizes all of that to plain, readable strings.
     """
-    question = ex["question"]
-    options = {"A": ex["A"], "B": ex["B"], "C": ex["C"], "D": ex["D"]}
-    answer = ex["answer"]
+    question = clean_value(ex["question"])
+    options = {
+        "A": clean_value(ex["A"]),
+        "B": clean_value(ex["B"]),
+        "C": clean_value(ex["C"]),
+        "D": clean_value(ex["D"]),
+    }
+    answer = clean_value(ex["answer"])
     return question, options, answer
 
 
