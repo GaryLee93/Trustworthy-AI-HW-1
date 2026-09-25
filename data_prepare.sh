@@ -1,7 +1,7 @@
 source /tmp/b11902090/miniconda3/etc/profile.d/conda.sh
 conda activate minigpt
 
-python prepare_zhtw_wikipedia_pretrain.py \
+python prepare_wiki_pretrain.py \
     --target_mb 2048 \
     --seed 824 \
     --min_length 100 \
