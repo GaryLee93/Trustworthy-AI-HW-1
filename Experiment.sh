@@ -38,7 +38,7 @@ python3 train_full_sft.py \
     --log_interval 500 \
     --save_interval 1000 \
     --data_path ../dataset/tmmluplus_sft.jsonl \
-    --epochs 5 \
+    --epochs 15 \
     --seed 824 \
     --use_wandb \
     --wandb_project "Trustworthy-AI-HW-1"
