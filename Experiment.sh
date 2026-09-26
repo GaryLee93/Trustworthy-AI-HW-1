@@ -41,4 +41,4 @@ python3 train_full_sft.py \
     --epochs 15 \
     --seed 824 \
     --use_wandb \
-    --wandb_project "Trustworthy-AI-HW-1"
+    --wandb_project "Trustworthy-AI-HW-1"    
