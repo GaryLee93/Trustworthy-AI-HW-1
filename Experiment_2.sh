@@ -23,7 +23,7 @@ ln -sfn "${OUTPUT_DIR}/checkpoints" "${PROJECT_DIR}/minimind/checkpoints"
 
 swanlab login -k iXDM58vG5zuP1CHeKtVPh
 
-cp -r "${PROJECT_DIR}/experiment-higher-len/" "${PROJECT_DIR}/experiment_2"
+cp -r "${PROJECT_DIR}/experiment-higher-len/" "${PROJECT_DIR}/experiment-2"
 rm -f "${PROJECT_DIR}/experiment-higher-len/checkpoints/full_sft_768.pth" "${PROJECT_DIR}/experiment-higher-len/checkpoints/full_sft_768_resume.pth"
 
 python3 train_full_sft.py \
