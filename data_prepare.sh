@@ -4,7 +4,8 @@ conda activate minigpt
 python prepare_wiki_pretrain.py \
     --target_mb 2048 \
     --seed 824 \
-    --min_length 100 \
+    --min_length 150 \
+    --max_chars 400 \
     --out_path /tmp/b11902090/Trustworthy-AI-HW-1/minimind/dataset/zhtw_wikipedia_pretrain.jsonl
 
 python prepare_tmmluplus_sft.py \

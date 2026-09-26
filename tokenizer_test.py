@@ -22,7 +22,7 @@ token (efficient) or splits it into multiple sub-character tokens / falls
 back to UNK (inefficient, and for UNK, actively lossy).
 
 Usage:
-    python check_tokenizer_zhtw.py \
+    python3 tokenizer_test.py \
         --tokenizer_path minimind/model \
         --text_file minimind/dataset/zhtw_wikipedia_pretrain.jsonl \
         --sample 500
