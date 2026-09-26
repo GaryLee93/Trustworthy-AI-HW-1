@@ -36,10 +36,10 @@ repo root that contains dataset/lm_dataset.py, since this imports
 SFTDataset directly rather than reimplementing its logic.
 
 Usage:
-    python3 check_sft.py \
-        --file minimind/dataset/tmmluplus_sft.jsonl \
-        --tokenizer_path minimind-3 \
-        --repo_root . \
+    python3 ../../check_sft.py \
+        --file tmmluplus_sft.jsonl \
+        --tokenizer_path ../../minimind-3 \
+        --repo_root .. \
         --max_seq_len 768 \
         --sample 500
 """
