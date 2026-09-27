@@ -23,6 +23,17 @@ ln -sfn "${OUTPUT_DIR}/checkpoints" "${PROJECT_DIR}/minimind/checkpoints"
 
 swanlab login -k iXDM58vG5zuP1CHeKtVPh
 
+python3 train_pretrain.py \
+    --save_dir "${OUTPUT_DIR}" \
+    --log_interval 1000 \
+    --save_interval 2000 \
+    --max_seq_len 500 \
+    --device 1 \
+    --data_path ../dataset/zhtw_wikipedia_pretrain.jsonl \
+    --seed 824 \
+    --use_wandb \
+    --wandb_project "Trustworthy-AI-HW-1"
+
 python3 train_full_sft.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 500 \
