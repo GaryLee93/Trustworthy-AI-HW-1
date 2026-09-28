@@ -6,9 +6,9 @@
     pip install opencc-python-reimplemented tqdm
 
 範例：
-    python pretrain_to_tw.py \
+    python3 pretrain_to_tw.py \
         --minimind /tmp/b11902090/Trustworthy-AI-HW-1/minimind/dataset/pretrain_t2t_mini.jsonl \
-        --wiki /tmp/b11902090/Trustworthy-AI-HW-1/minimind/dataset/wiki_zh_tw.jsonl \
+        --wiki /tmp/b11902090/Trustworthy-AI-HW-1/minimind/dataset/zhtw_wikipedia_pretrain.jsonl \
         --output /tmp/b11902090/Trustworthy-AI-HW-1/minimind/dataset/pretrain_tw_merged.jsonl \
         --wiki_key text \
         --seed 824
