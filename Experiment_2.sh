@@ -51,7 +51,7 @@ python3 train_full_sft.py \
     --device cuda:1 \
     --from_weight full_sft \
     --data_path ../dataset/tmmluplus_sft.jsonl \
-    --epochs 3 \
+    --epochs 7 \
     --seed 824 \
     --use_wandb \
     --wandb_project "Trustworthy-AI-HW-1"
