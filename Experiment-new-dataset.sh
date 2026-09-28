@@ -28,7 +28,8 @@ python3 train_pretrain.py \
     --log_interval 1000 \
     --save_interval 2000 \
     --max_seq_len 500 \
-    --device cuda:2 \
+    --from_resume 1 \
+    --device cuda:3 \
     --data_path ../dataset/pretrain_tw_merged.jsonl \
     --seed 824 \
     --use_wandb \
@@ -38,7 +39,7 @@ python3 train_full_sft.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 500 \
     --save_interval 1000 \
-    --device cuda:2 \
+    --device cuda:3 \
     --data_path ../dataset/sft_t2t_mini_zhtw.jsonl \
     --seed 824 \
     --use_wandb \
@@ -48,7 +49,7 @@ python3 train_full_sft.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 500 \
     --save_interval 1000 \
-    --device cuda:2 \
+    --device cuda:3 \
     --from_weight full_sft \
     --data_path ../dataset/tmmluplus_sft.jsonl \
     --epochs 7 \
