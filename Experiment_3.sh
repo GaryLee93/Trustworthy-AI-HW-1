@@ -29,7 +29,7 @@ python3 train_pretrain.py \
     --save_interval 2000 \
     --max_seq_len 500 \
     --num_hidden_layers 12 \
-    --device cuda:1 \
+    --batch_size 16 \
     --data_path ../dataset/pretrain_tw_merged.jsonl \
     --seed 824 \
     --use_wandb \
@@ -40,7 +40,7 @@ python3 train_full_sft.py \
     --log_interval 500 \
     --save_interval 1000 \
     --hidden_size 12 \
-    --device cuda:1 \
+    --batch_size 8 \
     --data_path ../dataset/sft_t2t_mini_zhtw.jsonl \
     --seed 824 \
     --use_wandb \
@@ -51,7 +51,6 @@ python3 train_full_sft.py \
     --log_interval 500 \
     --save_interval 1000 \
     --hidden_size 12 \
-    --device cuda:1 \
     --from_weight full_sft \
     --data_path ../dataset/tmmluplus_sft.jsonl \
     --epochs 7 \
