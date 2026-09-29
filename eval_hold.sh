@@ -25,7 +25,7 @@ ln -sfn "${OUTPUT_DIR}" "${REPO_DIR}/minimind/out"
 cd "${REPO_DIR}/minimind/scripts"
 python3 convert_model.py
  
-mkdir -p "${OUTPUT_DIR}"/eval
+mkdir -p "${OUTPUT_DIR}"/eval_hold
 cd "${REPO_DIR}"
  
 # Record which checkpoint this eval run actually converted and scored, so a
@@ -38,7 +38,7 @@ cd "${REPO_DIR}"
     echo "checkpoint: ${OUTPUT_DIR}/full_sft_768.pth"
     echo "checkpoint_md5: $(md5sum "${OUTPUT_DIR}/full_sft_768.pth" 2>/dev/null | cut -d' ' -f1)"
     echo "minimind_out_symlink: $(readlink -f "${REPO_DIR}/minimind/out")"
-} | tee "${OUTPUT_DIR}"/eval/provenance.txt
+} | tee "${OUTPUT_DIR}"/eval_hold/provenance.txt
 
 mkdir -p "${OUTPUT_DIR}"/eval
 cd /tmp/b11902090/Trustworthy-AI-HW-1
@@ -46,21 +46,21 @@ python3 eval_tmmluplus.py eval \
     --model_path /tmp/b11902090/Trustworthy-AI-HW-1/minimind/minimind-3 \
     --data minimind/dataset/tmmluplus_local_eval_holdout.jsonl \
     --save_predictions "${OUTPUT_DIR}"/eval/p.json \
-    --output "${OUTPUT_DIR}"/eval/eval.json
+    --output "${OUTPUT_DIR}"/eval_hold/eval.json
 
 python3 eval_tmmluplus.py eval \
     --model_path /tmp/b11902090/Trustworthy-AI-HW-1/minimind/minimind-3 \
     --data minimind/dataset/tmmluplus_local_eval_holdout.jsonl \
     --chat_template \
     --save_predictions "${OUTPUT_DIR}"/eval/p_template.json \
-    --output "${OUTPUT_DIR}"/eval/eval_template.json
+    --output "${OUTPUT_DIR}"/eval_hold/eval_template.json
 
 python3 eval_tmmluplus.py eval \
     --model_path /tmp/b11902090/Trustworthy-AI-HW-1/minimind/minimind-3 \
     --data minimind/dataset/tmmluplus_local_eval_holdout.jsonl \
     --num_fewshot 5 \
     --save_predictions "${OUTPUT_DIR}"/eval/p_fewshot.json \
-    --output "${OUTPUT_DIR}"/eval/eval_fewshot.json
+    --output "${OUTPUT_DIR}"/eval_hold/eval_fewshot.json
 
 python3 eval_tmmluplus.py eval \
     --model_path /tmp/b11902090/Trustworthy-AI-HW-1/minimind/minimind-3 \
@@ -68,4 +68,4 @@ python3 eval_tmmluplus.py eval \
     --chat_template \
     --num_fewshot 5 \
     --save_predictions "${OUTPUT_DIR}"/eval/p_template_fewshot.json \
-    --output "${OUTPUT_DIR}"/eval/eval_fewshot_template.json
+    --output "${OUTPUT_DIR}"/eval_hold/eval_fewshot_template.json
