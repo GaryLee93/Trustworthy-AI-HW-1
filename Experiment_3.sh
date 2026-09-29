@@ -26,7 +26,7 @@ swanlab login -k iXDM58vG5zuP1CHeKtVPh
 python3 train_pretrain.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 1000 \
-    --save_interval 2000 \
+    --save_interval 10000 \
     --max_seq_len 500 \
     --num_hidden_layers 12 \
     --device cuda:2 \
@@ -39,7 +39,7 @@ python3 train_pretrain.py \
 python3 train_full_sft.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 500 \
-    --save_interval 1000 \
+    --save_interval 10000 \
     --hidden_size 12 \
     --device cuda:2 \
     --batch_size 8 \
@@ -51,7 +51,7 @@ python3 train_full_sft.py \
 python3 train_full_sft.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 500 \
-    --save_interval 1000 \
+    --save_interval 10000 \
     --hidden_size 12 \
     --device cuda:2 \
     --from_weight full_sft \
