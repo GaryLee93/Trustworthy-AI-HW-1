@@ -102,10 +102,7 @@ def stratified_holdout_split(per_subject, holdout_frac, seed):
     return train_pool, val_train_pool, val_holdout_pool
 
 
-def to_conversation(subj, ex):
-    """Build one SFT example matching eval_tmmluplus.py's chat-mode prompt
-    exactly: user turn = INSTRUCTION + question + options (no trailing
-    ANSWER_PREFIX); assistant turn = ANSWER_PREFIX + correct letter."""
+def to_conversation(subj, ex, with_answer_text=True):
     row = {
         "subject": subj,
         "question": clean_value(ex["question"]),
@@ -116,19 +113,21 @@ def to_conversation(subj, ex):
         "answer": clean_value(ex["answer"]),
     }
     if row["answer"] not in LABELS:
-        return None  # skip malformed rows rather than crash mid-run
+        return None
 
     subject_zh = SUBJECTS.get(subj, (subj, ""))[0]
     body = INSTRUCTION.format(subject_zh=subject_zh) + format_question(row, with_answer=False)
     user_content = body[: -len(ANSWER_PREFIX)].rstrip()
-    assistant_content = ANSWER_PREFIX + row["answer"]
 
-    return {
-        "conversations": [
-            {"role": "user", "content": user_content},
-            {"role": "assistant", "content": assistant_content},
-        ]
-    }
+    assistant_content = ANSWER_PREFIX + row["answer"]
+    if with_answer_text:
+        # 格式與 prompt 內的選項一致："B. 選項內容"
+        assistant_content += f". {row[row['answer']]}"
+
+    return {"conversations": [
+        {"role": "user", "content": user_content},
+        {"role": "assistant", "content": assistant_content},
+    ]}
 
 
 def write_holdout_jsonl(pool, path):
@@ -155,6 +154,7 @@ def main():
     parser.add_argument("--revision", type=str, default="v1.1")
     parser.add_argument("--out_path", type=str, default="../dataset/tmmluplus_sft.jsonl")
     parser.add_argument("--holdout_out_path", type=str, default=None, help="optional: also write the holdout set here (same shape as prepare_tmmluplus_pretrain.py's holdout file) -- useful as a cross-check that both scripts compute the identical holdout under the same --seed/--holdout_frac")
+    parser.add_argument("--no_answer_text", action="store_true", help="只輸出字母（舊行為）")
     args = parser.parse_args()
 
     print(f"Loading {DATASET_NAME} (revision={args.revision}), train+validation only ...", file=sys.stderr)
@@ -166,7 +166,7 @@ def main():
     n_written, n_skipped = 0, 0
     with open(args.out_path, "w", encoding="utf-8") as f:
         for subj, ex in train_pool + val_train_pool:
-            record = to_conversation(subj, ex)
+            record = to_conversation(subj, ex, with_answer_text=not args.no_answer_text)
             if record is None:
                 n_skipped += 1
                 continue
