@@ -40,7 +40,7 @@ python3 train_full_sft.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 500 \
     --save_interval 10000 \
-    --hidden_size 12 \
+    --num_hidden_layers 12 \
     --device cuda:2 \
     --batch_size 8 \
     --data_path ../dataset/sft_t2t_mini_zhtw.jsonl \
@@ -52,7 +52,7 @@ python3 train_full_sft.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 500 \
     --save_interval 10000 \
-    --hidden_size 12 \
+    --num_hidden_layers 12 \
     --device cuda:2 \
     --from_weight full_sft \
     --data_path ../dataset/tmmluplus_sft.jsonl \
