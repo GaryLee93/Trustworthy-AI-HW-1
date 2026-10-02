@@ -9,19 +9,20 @@ git clone https://github.com/GaryLee93/Trustworthy-AI-HW-1.git
 cd Trustworthy-AI-HW-1
 git submodule update --init --recursive
 
-python3 -m venv .venv
-source .venv/bin/activate
-
-if ! command -v nvidia-smi &> /dev/null; then
-    echo "找不到 nvidia-smi,此機器可能沒有 NVIDIA GPU 或驅動未安裝,改裝 CPU 版本"
-    pip install torch torchvision torchaudio --break-system-packages
-    exit 0
+# 系統 Python >= 3.13 時安裝 PyO3 相關套件會失敗，改用 Miniconda 建立 Python 3.11 環境
+CONDA_DIR=$HOME/miniconda3
+if [ ! -d "$CONDA_DIR" ]; then
+    wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+    bash miniconda.sh -b -p "$CONDA_DIR"
+    rm miniconda.sh
 fi
+source "$CONDA_DIR/etc/profile.d/conda.sh"
+conda create -y -n minigpt -c conda-forge --override-channels python=3.11
+conda activate minigpt
 
-echo "=== 偵測 GPU 與驅動資訊 ==="
 if ! command -v nvidia-smi &> /dev/null; then
     echo "找不到 nvidia-smi,此機器可能沒有 NVIDIA GPU 或驅動未安裝,改裝 CPU 版本"
-    pip install torch torchvision torchaudio --break-system-packages
+    pip install torch torchvision torchaudio
     exit 0
 fi
 
