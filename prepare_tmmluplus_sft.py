@@ -33,7 +33,7 @@ questions are excluded from training in both.
 
 Usage:
     python prepare_tmmluplus_sft.py \
-        --seed 42 --holdout_frac 0.2 --revision v1.1 \
+        --seed 824 --holdout_frac 0.2 --revision v1.1 \
         --out_path ../dataset/tmmluplus_sft.jsonl
 """
 
