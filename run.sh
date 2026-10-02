@@ -9,14 +9,20 @@ git clone https://github.com/GaryLee93/Trustworthy-AI-HW-1.git
 cd Trustworthy-AI-HW-1
 git submodule update --init --recursive
 
-# 系統 Python >= 3.13 時安裝 PyO3 相關套件會失敗，改用 Miniconda 建立 Python 3.11 環境
-CONDA_DIR="$HOME/miniconda3"
+CONDA_DIR="${CONDA_DIR:-$(dirname "$(pwd)")/miniconda3}"
+export TMPDIR="$(dirname "$CONDA_DIR")/tmp"
+mkdir -p "$TMPDIR"
 # 以 conda.sh 是否存在判斷是否已安裝(目錄存在但為空或安裝不完整時也要重新安裝)
 if [ ! -f "$CONDA_DIR/etc/profile.d/conda.sh" ]; then
     wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
     # -u: 目錄已存在時仍允許安裝進去，否則安裝程式會因目錄已存在而報錯
-    bash miniconda.sh -b -u -p "$CONDA_DIR"
-    rm miniconda.sh
+    # 清理暫存檔失敗時安裝程式會回傳非 0,但 base 環境其實已裝好，因此改以 conda.sh 是否存在判斷成功與否
+    bash miniconda.sh -b -u -p "$CONDA_DIR" || true
+    rm -f miniconda.sh
+    if [ ! -f "$CONDA_DIR/etc/profile.d/conda.sh" ]; then
+        echo "Miniconda 安裝失敗:$CONDA_DIR"
+        exit 1
+    fi
 fi
 source "$CONDA_DIR/etc/profile.d/conda.sh"
 conda create -y -n minigpt -c conda-forge --override-channels python=3.11
