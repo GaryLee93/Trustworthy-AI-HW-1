@@ -27,7 +27,7 @@ python3 train_pretrain.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 1000 \
     --save_interval 2000 \
-    --max_seq_len 500 \
+    --device cuda:3 \
     --data_path ../dataset/zhtw_wikipedia_pretrain.jsonl \
     --seed 824 \
     --use_wandb \
@@ -37,6 +37,7 @@ python3 train_full_sft.py \
     --save_dir "${OUTPUT_DIR}" \
     --log_interval 500 \
     --save_interval 1000 \
+    --device cuda:3 \
     --data_path ../dataset/tmmluplus_sft.jsonl \
     --epochs 15 \
     --seed 824 \

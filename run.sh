@@ -97,7 +97,7 @@ python prepare_tmmluplus_sft.py \
     --seed 824 \
     --holdout_frac 0.2 \
     --revision v1.1 \
-    --holdout_out_path minimind/dataset/tmmluplus_holdout_check.jsonl \
+    --holdout_out_path minimind/dataset/tmmluplus_local_eval_holdout.jsonl \
     --out_path minimind/dataset/tmmluplus_sft.jsonl
 
 echo "=== 開始訓練，模型會存在Trustworthy-AI-HW-1/minimind/out ==="
@@ -105,14 +105,15 @@ cd minimind/trainer
 python3 train_pretrain.py \
     --log_interval 1000 \
     --save_interval 2000 \
-    --max_seq_len 500 \
+    --device cuda:3 \
     --data_path ../dataset/zhtw_wikipedia_pretrain.jsonl \
-    --seed 824 \
+    --seed 824
 
 python3 train_full_sft.py \
     --log_interval 500 \
     --save_interval 1000 \
+    --device cuda:3 \
     --data_path ../dataset/tmmluplus_sft.jsonl \
     --epochs 10 \
-    --seed 824 \
+    --seed 824
 
