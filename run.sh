@@ -1,8 +1,4 @@
 #!/bin/bash
-# ========== 用法 ==========
-# bash run.sh <PROJECT_DIR>
-# 例如: bash run.sh ~/Trustworthy-AI-HW-1
-# ==========================
 set -e
 
 git clone https://github.com/GaryLee93/Trustworthy-AI-HW-1.git
@@ -97,7 +93,6 @@ python prepare_wiki_pretrain.py \
     --max_chars 400 \
     --out_path minimind/dataset/zhtw_wikipedia_pretrain.jsonl
 
-cd <Project_Dir>
 python prepare_tmmluplus_sft.py \
     --seed 824 \
     --holdout_frac 0.2 \
