@@ -10,7 +10,6 @@ cd Trustworthy-AI-HW-1
 git submodule update --init --recursive
 
 # 系統 Python >= 3.13 時安裝 PyO3 相關套件會失敗，改用 Miniconda 建立 Python 3.11 環境
-mkdir -p "$HOME/miniconda3"
 CONDA_DIR="$HOME/miniconda3"
 if [ ! -d "$CONDA_DIR" ]; then
     wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
