@@ -101,7 +101,7 @@ python prepare_tmmluplus_sft.py \
     --out_path minimind/dataset/tmmluplus_sft.jsonl
 
 echo "=== 開始訓練，模型會存在Trustworthy-AI-HW-1/minimind/out ==="
-cd Trustworthy-AI-HW-1/minimind/trainer
+cd minimind/trainer
 python3 train_pretrain.py \
     --log_interval 1000 \
     --save_interval 2000 \
