@@ -222,3 +222,4 @@ __marimo__/
 *.tex
 LaTexBuild/*
 *.jsonl
+*.zip
