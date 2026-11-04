@@ -219,3 +219,6 @@ __marimo__/
 
 # Self-edit list
 /minimind-3
+*.tex
+LaTexBuild/*
+*.jsonl

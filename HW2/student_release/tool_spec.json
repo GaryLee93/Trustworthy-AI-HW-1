@@ -1,0 +1,23 @@
+{
+  "call_format": "<tool_call>\n{\"name\": \"memory_save\", \"arguments\": {\"key\": \"居住地\", \"value\": \"台南\"}}\n</tool_call>（MiniMind 原生格式；評測也接受 <call>memory_save{...}</call>）",
+  "policy": [
+    "只儲存使用者『自己』的資訊；談論別人（朋友、同事…）的句子不存",
+    "資訊更新時用同一個 key 再存一次，以新的為準",
+    "數值只存數字本身即可（例如 8、15000），帶單位也算對",
+    "一般閒聊直接回答，不呼叫工具"
+  ],
+  "tools": [
+    {"type": "function", "function": {"name": "memory_save", "description": "儲存一筆使用者自己的資訊",
+      "parameters": {"type": "object", "properties": {
+        "key": {"type": "string", "description": "屬性名稱，例如 居住地、職業、女兒年齡"},
+        "value": {"type": "string", "description": "值"}}, "required": ["key", "value"]}}},
+    {"type": "function", "function": {"name": "memory_search", "description": "查詢記憶中關於使用者的資訊",
+      "parameters": {"type": "object", "properties": {
+        "query": {"type": "string", "description": "查詢關鍵詞"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "calculator", "description": "計算四則運算",
+      "parameters": {"type": "object", "properties": {
+        "expression": {"type": "string", "description": "例如 8+11、15000*12"}}, "required": ["expression"]}}},
+    {"type": "function", "function": {"name": "get_date", "description": "取得今天日期",
+      "parameters": {"type": "object", "properties": {}}}}
+  ]
+}
