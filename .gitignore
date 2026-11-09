@@ -220,6 +220,7 @@ __marimo__/
 # Self-edit list
 /minimind-3
 *.tex
-LaTexBuild/*
+*LaTexBuild*
 *.jsonl
 *.zip
+*.json
