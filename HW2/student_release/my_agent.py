@@ -101,6 +101,28 @@ def _calc_plan(q):
     return None
 
 
+# ---------------------------------------------------------------- 過濾閒聊與問句（改進 2）
+# 疑問詞與虛詞：幾乎每個問句和閒聊都有，留在查詢裡只會把不相關的句子拉進來
+# （例如「我叫什麼名字？」靠「什麼」對到「晚餐不知道要吃什麼」）。長的詞要排在短的前面。
+QUERY_STOPWORDS = ("你記得", "你知道", "請問", "什麼", "哪裡", "哪個", "哪一", "哪", "多少", "幾",
+                   "嗎", "呢", "是", "的", "我")
+
+
+def _is_question(text):
+    """整句都是問句（「你有推薦的書嗎？」）：使用者在問 agent，不是在講自己的事。
+    有逗號的不算（「我住台南，你去過嗎？」前半句是事實），寧可多存也不要漏存。"""
+    return text.endswith(("？", "?")) and not re.search(r"[，,。；]", text)
+
+
+def _query_bigrams(question):
+    """把疑問詞與標點換成分隔符號，再切成 bigram；跨過分隔符號的 bigram 不算。"""
+    q = question
+    for w in QUERY_STOPWORDS:
+        q = q.replace(w, "|")
+    q = re.sub(r"[？?！!，,。、；\s]", "|", q)
+    return {q[i:i + 2] for i in range(len(q) - 1) if "|" not in q[i:i + 2]}
+
+
 class MyAgent(BaseAgent):
 
     # ------------------------------------------------------------------
@@ -125,7 +147,12 @@ class MyAgent(BaseAgent):
             同一個 key 再存一次就覆蓋舊值 → 直接解決 update 題。
             可以用 self.next_action([msg]) 取得模型輸出，再用 eval_agent.parse_call 解析。
         """
-        self.memory.append({"date": self.date, "text": msg})
+        text = msg.strip()
+        if _is_question(text):
+            return ""
+        # 同一句話重複出現（閒聊常常重複）只留最新的一筆，避免重複的句子佔掉 300 字。
+        self.memory = [m for m in self.memory if m["text"] != text]
+        self.memory.append({"date": self.date, "text": text})
         return ""
 
     # ------------------------------------------------------------------
@@ -143,8 +170,7 @@ class MyAgent(BaseAgent):
         if calc:
             return calc
 
-        q = question.replace("我", "").replace("？", "")
-        q_bigrams = {q[i:i + 2] for i in range(len(q) - 1)}
+        q_bigrams = _query_bigrams(question)
 
         def score(m):
             t = m["text"]
