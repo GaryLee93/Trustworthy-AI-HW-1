@@ -30,3 +30,10 @@
 - **Memory Accuracy**：6 種題型各自準確率的平均（macro）
 - **排行榜分數** = 0.7 × Memory Accuracy + 0.3 × Tool End-to-End
 - 工具呼叫：Format Validity、Decision Accuracy、Tool Accuracy、Argument Match、End-to-End（格式見 `tool_spec.json`，與 MiniMind 原生的 `<tool_call>` 格式相同）
+
+## 重現資料
+資料由以下指令產生，同一個 seed 每次結果完全相同（可用 `md5sum -c MD5SUMS_public` 核對）：
+```bash
+python gen_hw2_data.py --split train --seed 1 --n_personas 300 --n_tool 3000 --out data/train
+python gen_hw2_data.py --split val   --seed 2 --n_personas 30  --n_tool 200  --out data/val
+```

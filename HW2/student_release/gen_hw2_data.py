@@ -138,6 +138,9 @@ def make_persona(pid, rng, spec, n_sessions, turns_per_session):
         if k == "pet_name" and "pet_type" not in own:
             continue
         own.add(k)
+    # set 的走訪順序會受 Python 的雜湊隨機化影響，每次執行都不同；
+    # 改成依屬性表的固定順序排列，同一個 seed 才會產生完全相同的資料。
+    own = [k for k in A if k in own]
     unknown = [k for k in cat_keys if k not in own]
 
     # ---- 值
