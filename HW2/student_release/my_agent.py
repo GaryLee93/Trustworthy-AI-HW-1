@@ -26,13 +26,21 @@ OTHER_PEOPLE = (
 )
 
 # 數值事實：(句子必須包含的關鍵字, 抓數字的 regex)。同一句可以同時符合多個事實。
+# 年齡的 regex 可以跨過逗號（「說到我兒子，他今年12歲」），但中間不能出現另一個小孩，
+# 避免「我女兒很乖，兒子8歲」把 8 算給女兒。
 NUM_FACTS = {
-    "daughter": (("女兒",), (r"女兒[^\d，。、；]{0,6}?(\d+)\s*歲", r"(\d+)\s*歲的?女兒")),
-    "son": (("兒子",), (r"兒子[^\d，。、；]{0,6}?(\d+)\s*歲", r"(\d+)\s*歲的?兒子")),
+    "daughter": (("女兒", "閨女"), (r"(?:女兒|閨女)(?:(?!兒子)[^\d。；]){0,8}?(\d+)\s*歲",
+                                  r"(\d+)\s*歲的?(?:女兒|閨女)")),
+    "son": (("兒子",), (r"兒子(?:(?!女兒|閨女)[^\d。；]){0,8}?(\d+)\s*歲", r"(\d+)\s*歲的?兒子")),
     # 房租沒寫單位時（「每個月租金要付15000」），退而求其次抓三位數以上的數字。
-    "rent": (("租",), (r"(\d+)\s*(?:元|塊)", r"(\d{3,})")),
+    "rent": (("租", "房東"), (r"(\d+)\s*(?:元|塊)", r"(\d{3,})")),
     "siblings": (("兄弟姊妹", "手足"), (r"(\d+)\s*個",)),
 }
+
+
+def _norm(text):
+    """統一異體字：「兄弟姐妹」→「兄弟姊妹」、「姐姐」→「姊姊」。"""
+    return text.replace("姐", "姊")
 
 
 def _about_other(text):
@@ -41,6 +49,7 @@ def _about_other(text):
 
 def _extract_nums(text):
     """從一句話抓出使用者自己的數值事實，回傳 {"daughter": 6, ...}。"""
+    text = _norm(text)
     if _about_other(text):
         return {}
     found = {}
@@ -61,25 +70,34 @@ def _has(q, *words):
 
 def _calc_plan(q):
     """判斷題目是哪一種計算題，回傳 (需要的事實, 計算函式, 單位)；不是計算題就回傳 None。
-    順序有意義：「包含我總共有幾個小孩」也含「總共」「小孩」，要先於加總判斷。"""
-    kids = _has(q, "小孩", "孩子")
+    先認出題目在問誰（女兒、兒子、兩個小孩、房租、兄弟姊妹），再看要做什麼運算；
+    兩者對不上就回傳 None，寧可退回一般檢索，也不要放進錯的計算結果。"""
+    q = _norm(q)
+    dau, son = _has(q, "女兒", "閨女"), "兒子" in q
+    both = (dau and son) or _has(q, "兒女", "小孩", "孩子")
+    rent = _has(q, "租", "房東")
     sib = _has(q, "兄弟姊妹", "手足")
-    include_me = _has(q, "包含我", "包括我", "連我", "算上我", "算我", "加上我", "含我")
-    if include_me or (kids and "幾個" in q) or (sib and _has(q, "我和", "我跟", "加起來", "總共", "一共")):
+    include_me = _has(q, "包含我", "包括我", "連我", "算上我", "加上我", "含我", "算進我")
+    if not (dau or son or rent) and (
+            include_me
+            or (sib and _has(q, "我和", "我跟", "加起來", "總共", "一共"))
+            or (_has(q, "小孩", "孩子", "爸媽", "父母") and "幾個" in q)):
         return ("siblings",), lambda f: f["siblings"] + 1, "個"
-    if _has(q, "差", "相差") and (kids or _has(q, "兒子", "女兒")):
-        return ("daughter", "son"), lambda f: abs(f["daughter"] - f["son"]), "歲"
-    if _has(q, "加起來", "總共", "合計", "一共", "總和") and (kids or _has(q, "兒子", "女兒")):
-        return ("daughter", "son"), lambda f: f["daughter"] + f["son"], "歲"
-    if "女兒" in q and _has(q, "幾年", "多久", "成年"):
+    if rent and _has(q, "一年", "每年", "整年", "全年", "年租", "12個月", "十二個月"):
+        return ("rent",), lambda f: f["rent"] * 12, "元"
+    if dau and not son and _has(q, "幾年", "多少年", "多久", "成年", "18") and "年級" not in q:
         m = re.search(r"(\d+)\s*歲", q)
         target = int(m.group(1)) if m else 18   # 「成年」或沒寫歲數時視為 18
         return ("daughter",), lambda f: target - f["daughter"], "年"
-    if "兒子" in q and _has(q, "明年", "後年"):
-        later = 1 if "明年" in q else 2
+    if son and not dau and _has(q, "明年", "後年", "下一年", "再過一年", "一年後", "過完今年"):
+        later = 2 if "後年" in q else 1
         return ("son",), lambda f: f["son"] + later, "歲"
-    if "租" in q and _has(q, "一年", "每年", "整年", "全年"):
-        return ("rent",), lambda f: f["rent"] * 12, "元"
+    if both and _has(q, "差", "大幾歲", "小幾歲"):
+        return ("daughter", "son"), lambda f: abs(f["daughter"] - f["son"]), "歲"
+    # 加總：不能只看「加」，否則「參加」「加入」也會被當成計算題。
+    if both and (re.search(r"加(?:起來|總|一加|上)|相加|(?:女兒|閨女|兒子)加", q)
+                 or _has(q, "總共", "合計", "一共", "總和", "合起來")):
+        return ("daughter", "son"), lambda f: f["daughter"] + f["son"], "歲"
     return None
 
 
