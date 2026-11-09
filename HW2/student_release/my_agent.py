@@ -12,7 +12,75 @@
 目前這個範本可以直接執行，行為是「每句都存、用關鍵字挑相關的句子」，
 大致等於 agent_base.KeywordRetrievalAgent。請從各個 TODO 開始改進。
 """
+import re
+
 from agent_base import BaseAgent
+
+# ---------------------------------------------------------------- 計算題（改進 1）
+# 句子提到這些人物時，數字屬於別人，不能拿來計算（例如「我朋友的兒子9歲」）。
+OTHER_PEOPLE = (
+    "朋友", "同事", "同學", "室友", "鄰居", "主管", "老闆", "學長", "學姊", "學弟", "學妹",
+    "表哥", "表姊", "表弟", "表妹", "堂哥", "堂姊", "堂弟", "堂妹",
+    "爸", "媽", "哥哥", "姊姊", "弟弟", "妹妹", "老公", "老婆", "男友", "女友",
+    "阿姨", "叔叔", "舅舅", "姑姑", "伯伯", "爺爺", "奶奶", "外公", "外婆",
+)
+
+# 數值事實：(句子必須包含的關鍵字, 抓數字的 regex)。同一句可以同時符合多個事實。
+NUM_FACTS = {
+    "daughter": (("女兒",), (r"女兒[^\d，。、；]{0,6}?(\d+)\s*歲", r"(\d+)\s*歲的?女兒")),
+    "son": (("兒子",), (r"兒子[^\d，。、；]{0,6}?(\d+)\s*歲", r"(\d+)\s*歲的?兒子")),
+    # 房租沒寫單位時（「每個月租金要付15000」），退而求其次抓三位數以上的數字。
+    "rent": (("租",), (r"(\d+)\s*(?:元|塊)", r"(\d{3,})")),
+    "siblings": (("兄弟姊妹", "手足"), (r"(\d+)\s*個",)),
+}
+
+
+def _about_other(text):
+    return any(w in text for w in OTHER_PEOPLE)
+
+
+def _extract_nums(text):
+    """從一句話抓出使用者自己的數值事實，回傳 {"daughter": 6, ...}。"""
+    if _about_other(text):
+        return {}
+    found = {}
+    for name, (keys, patterns) in NUM_FACTS.items():
+        if not any(k in text for k in keys):
+            continue
+        for p in patterns:
+            m = re.search(p, text)
+            if m:
+                found[name] = int(m.group(1))
+                break
+    return found
+
+
+def _has(q, *words):
+    return any(w in q for w in words)
+
+
+def _calc_plan(q):
+    """判斷題目是哪一種計算題，回傳 (需要的事實, 計算函式, 單位)；不是計算題就回傳 None。
+    順序有意義：「包含我總共有幾個小孩」也含「總共」「小孩」，要先於加總判斷。"""
+    kids = _has(q, "小孩", "孩子")
+    sib = _has(q, "兄弟姊妹", "手足")
+    include_me = _has(q, "包含我", "包括我", "連我", "算上我", "算我", "加上我", "含我")
+    if include_me or (kids and "幾個" in q) or (sib and _has(q, "我和", "我跟", "加起來", "總共", "一共")):
+        return ("siblings",), lambda f: f["siblings"] + 1, "個"
+    if _has(q, "差", "相差") and (kids or _has(q, "兒子", "女兒")):
+        return ("daughter", "son"), lambda f: abs(f["daughter"] - f["son"]), "歲"
+    if _has(q, "加起來", "總共", "合計", "一共", "總和") and (kids or _has(q, "兒子", "女兒")):
+        return ("daughter", "son"), lambda f: f["daughter"] + f["son"], "歲"
+    if "女兒" in q and _has(q, "幾年", "多久", "成年"):
+        m = re.search(r"(\d+)\s*歲", q)
+        target = int(m.group(1)) if m else 18   # 「成年」或沒寫歲數時視為 18
+        return ("daughter",), lambda f: target - f["daughter"], "年"
+    if "兒子" in q and _has(q, "明年", "後年"):
+        later = 1 if "明年" in q else 2
+        return ("son",), lambda f: f["son"] + later, "歲"
+    if "租" in q and _has(q, "一年", "每年", "整年", "全年"):
+        return ("rent",), lambda f: f["rent"] * 12, "元"
+    return None
 
 
 class MyAgent(BaseAgent):
@@ -53,6 +121,10 @@ class MyAgent(BaseAgent):
             呼叫計算機，把「計算結果：19歲」直接寫進回傳的內容。
           - 300 字很有限，排序與格式都會影響分數。
         """
+        calc = self._calc(question)
+        if calc:
+            return calc
+
         q = question.replace("我", "").replace("？", "")
         q_bigrams = {q[i:i + 2] for i in range(len(q) - 1)}
 
@@ -72,6 +144,22 @@ class MyAgent(BaseAgent):
             picked.append(i)
             used += len(text) + 1
         return "\n".join(self.memory[i]["text"] for i in sorted(picked))
+
+    def _calc(self, question):
+        """計算題：從記憶抓出數字並算好，回傳「計算結果：19歲」；不是計算題或數字不齊就回傳 ""。
+        依時間順序掃過記憶，後說的會覆蓋先說的，所以房租更新後會用新的值。
+        只回傳結果這一行、不附上原句：「我兒子明年幾歲？」的選項包含兒子現在的年紀，
+        原句裡的數字反而會把模型拉向錯的選項。"""
+        plan = _calc_plan(question)
+        if plan is None:
+            return ""
+        needs, compute, unit = plan
+        facts = {}
+        for m in self.memory:
+            facts.update(_extract_nums(m["text"]))
+        if not all(k in facts for k in needs):
+            return ""
+        return f"計算結果：{compute(facts)}{unit}"
 
     # ------------------------------------------------------------------
     def next_action(self, context: list) -> str:
