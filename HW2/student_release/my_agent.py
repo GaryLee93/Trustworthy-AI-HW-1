@@ -123,6 +123,73 @@ def _query_bigrams(question):
     return {q[i:i + 2] for i in range(len(q) - 1) if "|" not in q[i:i + 2]}
 
 
+# ---------------------------------------------------------------- 擴充查詢詞（改進 3）
+# 問句和陳述句常用不同的詞：問「我住在哪裡？」，使用者當初說的是「我家在嘉義」。
+# 先從問句判斷在問哪個主題，再把這個主題在陳述句裡常見的詞（含常見的值，例如縣市名、動物名）
+# 加進查詢。詞表刻意寫得比公開模板寬，因為 test 會用沒看過的說法；認不出主題就只用原本的 bigram。
+CITIES = ("台北", "臺北", "新北", "桃園", "台中", "臺中", "台南", "臺南", "高雄", "新竹", "基隆", "嘉義",
+          "宜蘭", "花蓮", "台東", "臺東", "屏東", "苗栗", "彰化", "南投", "雲林", "澎湖", "金門", "馬祖")
+ANIMALS = ("貓", "狗", "兔", "鼠", "龜", "鳥", "鸚鵡", "金魚", "蜥蜴", "刺蝟")
+# 「點」單獨用會對到「早點休息」「有點感冒」，所以只用「6點」「六點」這種帶數字的寫法。
+HOURS = tuple(f"{h}點" for h in range(1, 13)) + tuple(
+    f"{h}點" for h in ("一", "兩", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"))
+TOPICS = {
+    # 主題: (問句中的觸發詞, 陳述句中可能出現的詞)
+    "name": (("名字", "姓名", "叫什麼", "稱呼"),
+             ("叫我", "我叫", "名字", "姓名", "稱呼", "本名", "綽號", "認識")),
+    "city": (("住", "城市", "縣市", "哪裡人", "家在"),
+             ("住", "家在", "搬", "定居") + CITIES),
+    "job": (("工作", "職業", "行業", "哪一行", "做什麼的"),
+            ("工作", "職業", "當", "一名", "這行", "轉職", "上班", "師", "員")),
+    "pet_type": (("寵物", "動物", "養"),
+                 ("養", "寵物", "毛小孩") + ANIMALS),
+    "pet_name": ((),  # 由 _topics() 判斷：問句同時提到寵物與名字
+                 ("寵物", "取名", "叫", "名字", "寶貝", "毛小孩") + ANIMALS),
+    "food": (("吃", "食物", "美食", "料理"),
+             ("吃", "食物", "愛", "好吃", "美食")),
+    "allergy": (("過敏",),
+                ("過敏", "不能碰", "不能吃", "碰到")),
+    "birth": (("生日", "出生", "壽星"),
+              ("生日", "出生", "壽星", "月生")),
+    "sport": (("運動", "健身"),
+              ("運動", "健身", "球", "跑", "游泳", "爬山", "瑜珈", "騎", "練")),
+    "commute": (("通勤", "交通", "去公司"),
+                ("通勤", "上班", "公司", "捷運", "公車", "機車", "開車", "走路", "騎", "搭",
+                 "火車", "高鐵", "腳踏車", "單車")),
+    "color": (("顏色", "色"),
+              ("色",)),
+    "movie": (("電影", "片"),
+              ("電影", "片")),
+    "major": (("大學", "主修", "科系", "系", "念什麼", "讀什麼"),
+              ("大學", "主修", "系", "念", "讀", "畢業")),
+    "wake": (("起床", "醒", "幾點起"),
+             ("起床", "醒", "鬧鐘") + HOURS),
+}
+
+
+def _topics(question):
+    """判斷問句在問哪些主題（multi 題可能有兩個）。"""
+    q = _norm(question)
+    found = {t for t, (trig, _) in TOPICS.items() if trig and _has(q, *trig)}
+    # 「我的寵物叫什麼名字？」問的是寵物的名字，不是使用者的名字。
+    # 但「我養的是什麼寵物、叫什麼名字？」同時問種類，這時 pet_type 要保留。
+    if _has(q, "寵物", "毛小孩", "動物", "牠", *ANIMALS) and _has(q, "名字", "叫", "取名"):
+        found.discard("name")
+        if not re.search(r"什麼(?:寵物|動物)|動物|養(?:的是)?什麼|哪種|種類|品種", q):
+            found.discard("pet_type")
+        found.add("pet_name")
+    # 「我平常怎麼去上班？」問的是通勤方式，不是職業。
+    if _has(q, "上班", "上學") and _has(q, "怎麼", "如何", "方式", "交通"):
+        found.discard("job")
+        found.add("commute")
+    return found
+
+
+def _expansion_terms(question):
+    """問句所屬主題的擴充詞；用子字串比對，所以「叫」「養」這種單字也能用。"""
+    return tuple(dict.fromkeys(w for t in sorted(_topics(question)) for w in TOPICS[t][1]))
+
+
 class MyAgent(BaseAgent):
 
     # ------------------------------------------------------------------
@@ -171,10 +238,12 @@ class MyAgent(BaseAgent):
             return calc
 
         q_bigrams = _query_bigrams(question)
+        expand = _expansion_terms(question)
 
         def score(m):
             t = m["text"]
-            return len(q_bigrams & {t[i:i + 2] for i in range(len(t) - 1)})
+            overlap = len(q_bigrams & {t[i:i + 2] for i in range(len(t) - 1)})
+            return overlap + sum(w in t for w in expand)
 
         ranked = sorted(range(len(self.memory)),
                         key=lambda i: (-score(self.memory[i]), -i))
