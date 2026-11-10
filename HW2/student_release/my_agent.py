@@ -16,14 +16,21 @@ import re
 
 from agent_base import BaseAgent
 
-# ---------------------------------------------------------------- 計算題（改進 1）
-# 句子提到這些人物時，數字屬於別人，不能拿來計算（例如「我朋友的兒子9歲」）。
+# ---------------------------------------------------------------- 他人資訊（改進 1 的計算題、改進 4 的檢索共用）
 OTHER_PEOPLE = (
     "朋友", "同事", "同學", "室友", "鄰居", "主管", "老闆", "學長", "學姊", "學弟", "學妹",
     "表哥", "表姊", "表弟", "表妹", "堂哥", "堂姊", "堂弟", "堂妹",
     "爸", "媽", "哥哥", "姊姊", "弟弟", "妹妹", "老公", "老婆", "男友", "女友",
     "阿姨", "叔叔", "舅舅", "姑姑", "伯伯", "爺爺", "奶奶", "外公", "外婆",
 )
+_PEOPLE_RE = "|".join(sorted(OTHER_PEOPLE, key=len, reverse=True))
+# 句子的「主詞」是別人才算講別人：「我朋友住高雄」「跟你說，我大學同學對蛋過敏」「聽說我主管...」。
+# 只是提到別人不算：「我每個禮拜都跟朋友去打籃球」「我跟我老公的女兒5歲」講的仍是使用者自己。
+_OTHER_SUBJECT = re.compile(
+    r"^(?:[^，,。]{0,8}[，,])?(?:我?聽說)?我(?:的|家|們家)?"
+    r"(?:大學|高中|國中|小學|研究所|以前的|之前的|前)?(?:" + _PEOPLE_RE + ")")
+
+# ---------------------------------------------------------------- 計算題（改進 1）
 
 # 數值事實：(句子必須包含的關鍵字, 抓數字的 regex)。同一句可以同時符合多個事實。
 # 年齡的 regex 可以跨過逗號（「說到我兒子，他今年12歲」），但中間不能出現另一個小孩，
@@ -44,7 +51,14 @@ def _norm(text):
 
 
 def _about_other(text):
-    return any(w in text for w in OTHER_PEOPLE)
+    """句子是不是在講別人（主詞是朋友、同事等）。呼叫前先 _norm()。"""
+    return bool(_OTHER_SUBJECT.match(text))
+
+
+def _people_in(question):
+    """問句提到的其他人物，例如「我朋友住哪裡？」→ ["朋友"]；問使用者自己時是空的。"""
+    q = _norm(question)
+    return [w for w in OTHER_PEOPLE if w in q]
 
 
 def _extract_nums(text):
@@ -219,7 +233,8 @@ class MyAgent(BaseAgent):
             return ""
         # 同一句話重複出現（閒聊常常重複）只留最新的一筆，避免重複的句子佔掉 300 字。
         self.memory = [m for m in self.memory if m["text"] != text]
-        self.memory.append({"date": self.date, "text": text})
+        # 講別人的句子照樣存，但標記起來（改進 4），由 prepare() 決定要不要用。
+        self.memory.append({"date": self.date, "text": text, "about_other": _about_other(_norm(text))})
         return ""
 
     # ------------------------------------------------------------------
@@ -245,8 +260,16 @@ class MyAgent(BaseAgent):
             overlap = len(q_bigrams & {t[i:i + 2] for i in range(len(t) - 1)})
             return overlap + sum(w in t for w in expand)
 
-        ranked = sorted(range(len(self.memory)),
-                        key=lambda i: (-score(self.memory[i]), -i))
+        # 改進 4：問使用者自己時排除講別人的句子（它們的值正是 distractor 題的錯誤選項）；
+        # 問句提到別人時（「我朋友住哪裡？」），反過來只用講那個人的句子。
+        people = _people_in(question)
+        if people:
+            pool = [i for i, m in enumerate(self.memory)
+                    if m["about_other"] and any(w in _norm(m["text"]) for w in people)]
+        else:
+            pool = [i for i, m in enumerate(self.memory) if not m["about_other"]]
+
+        ranked = sorted(pool, key=lambda i: (-score(self.memory[i]), -i))
         picked, used = [], 0
         for i in ranked:
             if score(self.memory[i]) == 0:
