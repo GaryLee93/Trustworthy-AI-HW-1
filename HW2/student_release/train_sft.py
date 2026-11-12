@@ -8,8 +8,11 @@ minimind/trainer/train_full_sft.py 相同，工具函式直接 import 自 minimi
              target 後面接 eos（<|im_end|>），讓模型學會呼叫完就停。
      reading eval_agent.build_prompt()（以「答案：」結尾）；prompt 與選項分開 tokenize 再接起來，
              與 eval_agent.score_options() 算分的序列逐 token 相同。
-  2. 模型：直接讀寫 Hugging Face 格式（from_pretrained / save_pretrained），不經過 .pth 轉換，
-     輸出目錄可以直接給 eval_agent.py 使用與繳交。
+  2. 模型：直接讀寫 Hugging Face 格式（from_pretrained / save_pretrained）。官方 minimind-3 與 HW1 經
+     convert_model.py 轉出的模型都是 Qwen3ForCausalLM 格式，存出來的格式與起始模型相同，
+     不需要 HW1 eval.sh 的 .pth → convert_model.py 轉換；輸出目錄可以直接給 eval_agent.py 使用與繳交。
+     存檔後套用與 convert_model.py 相同的 transformers 5.x 相容處理，讓低版本 transformers 也能載入。
+     Qwen3（非 MoE）的輸出沒有 aux_loss，此時 loss 只用 res.loss。
   3. 沒有 from_resume（資料量小，重新訓練即可）。
   4. 每個 batch 只補齊到該 batch 最長的長度（minimind 一律補到 max_seq_len）。
   5. prompt + target 超過 max_seq_len 時直接報錯；minimind 會截斷，但截斷會把 target 切掉。
@@ -29,9 +32,7 @@ MINIMIND_DIR = os.environ.get(
 sys.path.append(os.path.abspath(MINIMIND_DIR))
 
 import argparse
-import glob
 import json
-import shutil
 import time
 import warnings
 from contextlib import nullcontext
@@ -43,6 +44,7 @@ from torch import optim
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
 from transformers import AutoModelForCausalLM, AutoTokenizer
+import transformers
 
 from eval_agent import build_prompt
 from trainer.trainer_utils import (Logger, SkipBatchSampler, get_lr, init_distributed_mode, is_main_process,
@@ -108,11 +110,23 @@ def save_model():
     raw_model = getattr(raw_model, '_orig_mod', raw_model)
     raw_model.save_pretrained(args.save_dir)
     tokenizer.save_pretrained(args.save_dir)
-    # trust_remote_code 需要的模型程式碼（model_minimind.py 等）若沒有被 save_pretrained 一起存出，從起始模型目錄複製
-    for src in glob.glob(os.path.join(args.model_dir, "*.py")):
-        dst = os.path.join(args.save_dir, os.path.basename(src))
-        if not os.path.exists(dst):
-            shutil.copy(src, dst)
+    # ======= 與 minimind/scripts/convert_model.py 相同：transformers-5.0 的相容低版本寫法 =======
+    if int(transformers.__version__.split('.')[0]) >= 5:
+        tokenizer_config_path = os.path.join(args.save_dir, "tokenizer_config.json")
+        config_path = os.path.join(args.save_dir, "config.json")
+        with open(tokenizer_config_path, encoding='utf-8') as f:
+            tokenizer_config = json.load(f)
+        tokenizer_config.update(tokenizer_class="PreTrainedTokenizerFast", extra_special_tokens={})
+        with open(tokenizer_config_path, 'w', encoding='utf-8') as f:
+            json.dump(tokenizer_config, f, indent=2, ensure_ascii=False)
+        with open(config_path, encoding='utf-8') as f:
+            config = json.load(f)
+        if 'rope_parameters' in config:
+            config['rope_theta'] = config['rope_parameters']['rope_theta']
+            config['rope_scaling'] = None
+            del config['rope_parameters']
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
     model.train()
 
 
@@ -127,7 +141,8 @@ def train_epoch(epoch, loader, iters, wandb=None):
 
         with autocast_ctx:
             res = model(input_ids, labels=labels)
-            loss = res.loss + res.aux_loss
+            aux_loss = getattr(res, "aux_loss", None)  # MiniMind MoE 才有；Qwen3 格式沒有
+            loss = res.loss if aux_loss is None else res.loss + aux_loss
             loss = loss / args.accumulation_steps
 
         scaler.scale(loss).backward()
@@ -144,7 +159,7 @@ def train_epoch(epoch, loader, iters, wandb=None):
         if step % args.log_interval == 0 or step == iters:
             spend_time = time.time() - start_time
             current_loss = loss.item() * args.accumulation_steps
-            current_aux_loss = res.aux_loss.item() if res.aux_loss is not None else 0.0
+            current_aux_loss = aux_loss.item() if aux_loss is not None else 0.0
             current_logits_loss = current_loss - current_aux_loss
             current_lr = optimizer.param_groups[-1]['lr']
             eta_min = spend_time / step * (iters - step) // 60

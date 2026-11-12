@@ -7,18 +7,20 @@ source ../../miniconda3/etc/profile.d/conda.sh
 conda activate hw2
 
 
-cd "../minimind/trainer"
-mkdir -p "${OUTPUT_DIR}"
-mkdir -p "${OUTPUT_DIR}/checkpoints"
-ln -sfn "${OUTPUT_DIR}" "${PROJECT_DIR}/minimind/out"
-ln -sfn "${OUTPUT_DIR}/checkpoints" "${PROJECT_DIR}/minimind/checkpoints"
-
+cd "student_release"
 
 swanlab login -k iXDM58vG5zuP1CHeKtVPh
-python3 train_full_sft.py \
-    --save_dir "${OUTPUT_DIR}" \
-    --log_interval 1000 \
-    --save_interval 2000 \
-    --seed 824 \
+python train_sft.py \
+    --save_dir ../models/E2  \
+    --model_dir ../minimind-3 \
+    --data_path sft_data/sft_tool.jsonl \
+    --log_interval 250 \
+    --save_interval 500 \
     --use_wandb \
-    --wandb_project "Trustworthy-AI-HW-1"
+    --seed 824 2>&1 | tee ../logs/E2_train.log
+
+python eval_agent.py \
+    --model_dir ../models/E2 \
+    --agent my_agent:MyAgent \
+    --data_dir data/val \
+    --out results/E2
