@@ -17,6 +17,7 @@ python train_sft.py \
     --log_interval 250 \
     --save_interval 500 \
     --use_wandb \
+    --determiministic \
     --seed 824 2>&1 | tee ../logs/E2_train.log
 
 python eval_agent.py \

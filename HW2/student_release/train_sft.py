@@ -16,6 +16,13 @@ minimind/trainer/train_full_sft.py 相同，工具函式直接 import 自 minimi
   3. 沒有 from_resume（資料量小，重新訓練即可）。
   4. 每個 batch 只補齊到該 batch 最長的長度（minimind 一律補到 max_seq_len）。
   5. prompt + target 超過 max_seq_len 時直接報錯；minimind 會截斷，但截斷會把 target 切掉。
+  6. --deterministic：同一台機器、同一套軟體版本下，同一個 seed 重跑會得到逐位元相同的權重。
+     setup_seed() 只固定了亂數與 cuDNN，GPU 上仍有三個非決定性來源，這個選項逐一處理：
+       注意力反向傳播（SDPA 的 flash / memory-efficient kernel 用 atomic add 累加）→ 改用 eager 注意力
+       embedding 反向傳播（與 lm_head 共用權重，CUDA 實作用 atomic add）→ torch.use_deterministic_algorithms
+       cuBLAS 的 workspace 配置 → CUBLAS_WORKSPACE_CONFIG=:4096:8
+     用到沒有決定性實作的運算時，PyTorch 會直接拋出 RuntimeError 並指出是哪個運算。
+     代價是訓練較慢、較吃記憶體；不同 GPU、CUDA 或 PyTorch 版本之間仍不保證結果相同，多卡（DDP）也不保證。
 
 用法（在 student_release/ 下執行；minimind 子模組預設在 ../../minimind，可用環境變數 MINIMIND_DIR 指定）：
   # E2：只用 tool 資料
@@ -23,6 +30,8 @@ minimind/trainer/train_full_sft.py 相同，工具函式直接 import 自 minimi
   # E3：tool + reading 混合
   python train_sft.py --model_dir ../minimind-3 --data_path sft_data/sft_tool.jsonl sft_data/sft_reading.jsonl \
       --save_dir ../models/E3
+  # 需要可重現的最終實驗
+  python train_sft.py ... --deterministic
 """
 import os
 import sys
@@ -196,9 +205,15 @@ if __name__ == "__main__":
     parser.add_argument("--use_wandb", action="store_true", help="是否使用wandb")
     parser.add_argument("--wandb_project", type=str, default="MiniMind-HW2-SFT", help="wandb项目名")
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
+    parser.add_argument("--deterministic", action="store_true",
+                        help="使用決定性的 GPU 運算（eager 注意力），同機器同 seed 可逐位元重現；訓練較慢")
     args = parser.parse_args()
 
     # ========== 1. 初始化环境和随机种子 ==========
+    if args.deterministic:
+        # cuBLAS 在建立 handle（第一次做矩陣乘法）時讀取這個環境變數，所以要在任何 CUDA 運算之前設定
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        torch.use_deterministic_algorithms(True)
     local_rank = init_distributed_mode()
     if dist.is_initialized(): args.device = f"cuda:{local_rank}"
     setup_seed(args.seed + (dist.get_rank() if dist.is_initialized() else 0))
@@ -220,10 +235,14 @@ if __name__ == "__main__":
 
     # ========== 5. 定义模型、数据、优化器 ==========
     tokenizer = AutoTokenizer.from_pretrained(args.model_dir, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(args.model_dir, trust_remote_code=True, dtype=torch.float32)
+    # eager 注意力的反向傳播只用一般的矩陣乘法與 softmax；預設的 sdpa 在 GPU 上的反向傳播是非決定性的
+    attn_kwargs = {"attn_implementation": "eager"} if args.deterministic else {}
+    model = AutoModelForCausalLM.from_pretrained(args.model_dir, trust_remote_code=True, dtype=torch.float32,
+                                                 **attn_kwargs)
     model = model.to(args.device)
     model.train()
-    Logger(f'Model Params: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M')
+    Logger(f'Model Params: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M, '
+           f'attention: {model.config._attn_implementation}, deterministic: {args.deterministic}')
     train_ds = HW2SFTDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
     lengths = [len(ids) for ids, _ in train_ds.samples]
     Logger(f'Samples: {len(train_ds)}, max length: {max(lengths)}, mean length: {sum(lengths) / len(lengths):.0f}')
