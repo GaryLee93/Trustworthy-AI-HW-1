@@ -9,6 +9,7 @@
   sft_reading.jsonl  {"task": "reading", "id", "type", "context", "question", "target"}
       context 是 MyAgent.prepare() 在 train 人物上的輸出、截到最後 max_context_chars 字（同 eval_memory）；
       target 是正確選項的文字（option 計分比的就是選項文字的機率）。
+  sft_mix.jsonl      sft_tool.jsonl 接上 sft_reading.jsonl（Experiment 3 用）；train_sft.py 每個 epoch 會打亂順序。
 
 用法（val 只能用來評測，不可拿來產生訓練資料）：
   python build_sft_data.py --data_dir data/train --out_dir sft_data
@@ -104,9 +105,11 @@ def main():
     reading = build_reading(args.data_dir, MyAgent(None, None, "cpu"), args.max_context_chars)
     write_jsonl(os.path.join(args.out_dir, "sft_tool.jsonl"), tool)
     write_jsonl(os.path.join(args.out_dir, "sft_reading.jsonl"), reading)
+    write_jsonl(os.path.join(args.out_dir, "sft_mix.jsonl"), tool + reading)
 
     print(f"sft_tool.jsonl     {len(tool)} rows  {dict(Counter(r['kind'] for r in tool))}")
     print(f"sft_reading.jsonl  {len(reading)} rows  {dict(Counter(r['type'] for r in reading))}")
+    print(f"sft_mix.jsonl      {len(tool) + len(reading)} rows")
 
 
 if __name__ == "__main__":

@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
-"""離線分析每個版本放進 prompt 的記憶內容（報告 1.6 節的 Table 2、Table 3）。
+"""離線分析每個版本放進 prompt 的記憶內容（報告最後一節 Context Quality and Answer Grounding 的兩張表）。
 
 不重新跑模型：讀 eval_agent.py 輸出的 memory_pred.jsonl，對照驗證集的 evidence 與 annotations。
 
 用法：
   python analyze_context.py
   python analyze_context.py --runs "Update 1=KeywordRetrievalAgent_val" "Update 4=E1_update4"
+  # 指定該版本模型自己的 NoMemory 結果，才能算 gold boost
+  python analyze_context.py --runs "E2=E2_epoch1:NoMemoryAgent_E2"
 
 注意：
   - Update 1 只改了 tool 題，非 tool 題的 context 與 KeywordRetrievalAgent 完全相同，所以用它的結果代表。
   - 只看非 tool 題（240 題）；evidence 相關的指標只看有證據句的 single / update / multi / distractor（197 題）。
+  - gold boost 比較的是「同一個模型」有無記憶的差別；版本與 NoMemory 結果的 model_dir 不同時印出 --。
 """
 import argparse
 import json
@@ -22,6 +25,7 @@ DEFAULT_RUNS = [
     "Update 2=E1_update2",
     "Update 3=E1_update3",
     "Update 4=E1_update4",
+    "E2=E2_epoch1",
 ]
 
 
@@ -42,6 +46,7 @@ def load_val(data_dir):
 
 
 def analyze(preds, no_memory, val):
+    """no_memory 為 None 時不算 gold boost（沒有同一個模型的 NoMemory 結果）。"""
     n = lines_total = small_talk = chars = with_other = picks_other = 0
     ev_n = ev_hit = correct_ev = correct_no_ev = 0
     abstain_n = abstain_empty = 0
@@ -68,9 +73,10 @@ def analyze(preds, no_memory, val):
             correct_ev += hit and r["correct"]
             correct_no_ev += (not hit) and r["correct"]
             # 正解分數相對 NoMemory 的提升，減去其他三個選項的平均提升
-            gold = LETTERS.index(q["answer"])
-            d = [a - b for a, b in zip(r["scores"], no_memory[r["qid"]]["scores"])]
-            boosts.append(d[gold] - sum(d[i] for i in range(4) if i != gold) / 3)
+            if no_memory is not None:
+                gold = LETTERS.index(q["answer"])
+                d = [a - b for a, b in zip(r["scores"], no_memory[r["qid"]]["scores"])]
+                boosts.append(d[gold] - sum(d[i] for i in range(4) if i != gold) / 3)
     return {
         "context": {
             "Evidence recall*": ev_hit / ev_n,
@@ -83,13 +89,15 @@ def analyze(preds, no_memory, val):
             "Correct with evidence in context*": correct_ev,
             "Correct without evidence in context (guesses)*": correct_no_ev,
             "Predictions of another person's value": picks_other,
-            "Gold boost*": sum(boosts) / len(boosts),
+            "Gold boost*": sum(boosts) / len(boosts) if boosts else None,
         },
         "counts": dict(non_tool=n, evidence_questions=ev_n, abstain=abstain_n),
     }
 
 
 def fmt(v):
+    if v is None:
+        return "--"
     if isinstance(v, int):
         return str(v)
     return f"{v:.0f}" if v >= 10 else f"{v:.2f}"
@@ -108,16 +116,24 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results_dir", default="results")
     ap.add_argument("--data_dir", default="data/val")
-    ap.add_argument("--no_memory", default="NoMemoryAgent_val", help="算 gold boost 用的 NoMemory 結果資料夾")
-    ap.add_argument("--runs", nargs="+", default=DEFAULT_RUNS, help="名稱=結果資料夾")
+    ap.add_argument("--no_memory", default="NoMemoryAgent_val", help="預設用來算 gold boost 的 NoMemory 結果資料夾")
+    ap.add_argument("--runs", nargs="+", default=DEFAULT_RUNS,
+                    help="名稱=結果資料夾[:同一個模型的 NoMemory 結果資料夾]")
     args = ap.parse_args()
 
+    def load_run(folder):
+        with open(os.path.join(args.results_dir, folder, "summary.json"), encoding="utf-8") as f:
+            model_dir = json.load(f)["model_dir"]
+        return model_dir, load_jsonl(os.path.join(args.results_dir, folder, "memory_pred.jsonl"))
+
     val = load_val(args.data_dir)
-    no_memory = {r["qid"]: r for r in load_jsonl(os.path.join(args.results_dir, args.no_memory, "memory_pred.jsonl"))}
     names, results = [], []
     for spec in args.runs:
-        name, folder = spec.split("=", 1)
-        preds = load_jsonl(os.path.join(args.results_dir, folder, "memory_pred.jsonl"))
+        name, folders = spec.split("=", 1)
+        folder, _, no_memory_folder = folders.partition(":")
+        model_dir, preds = load_run(folder)
+        nm_model_dir, nm_preds = load_run(no_memory_folder or args.no_memory)
+        no_memory = {r["qid"]: r for r in nm_preds} if nm_model_dir == model_dir else None
         names.append(name)
         results.append(analyze(preds, no_memory, val))
 
